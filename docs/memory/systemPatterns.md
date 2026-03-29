@@ -195,5 +195,6 @@ Consumers compose features by rendering sub-components as children of the main `
 Library packages publish CommonJS + ESM dual builds; the app produces a chunked static bundle with PWA assets.
 
 ## Details
-For detailed architecture → see docs/technical/architecture.md
-For domain glossary → see docs/product/domain-glossary.md
+
+- **Product:** [PRD](../product/PRD.md), [Domain glossary](../product/domain-glossary.md)
+- **Technical:** [Architecture](../technical/architecture.md), [Dev setup](../technical/dev-setup.md)

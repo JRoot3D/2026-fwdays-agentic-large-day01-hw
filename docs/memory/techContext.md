@@ -174,5 +174,6 @@ Defined via `browserslist` in package `package.json` files.
 - Last 1 version of Chrome, Firefox, Safari
 
 ## Details
-For detailed architecture → see docs/technical/architecture.md
-For domain glossary → see docs/product/domain-glossary.md
+
+- **Product:** [PRD](../product/PRD.md), [Domain glossary](../product/domain-glossary.md)
+- **Technical:** [Architecture](../technical/architecture.md), [Dev setup](../technical/dev-setup.md)

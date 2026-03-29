@@ -120,5 +120,6 @@ gh pr create --title "Day 1: <name> — Workshop Assignment"
 > Source: root `package.json` scripts, `.coderabbit.yaml` pre_merge_checks, `activeContext.md`
 
 ## Details
-For detailed architecture → see docs/technical/architecture.md
-For domain glossary → see docs/product/domain-glossary.md
+
+- **Product:** [PRD](../product/PRD.md), [Domain glossary](../product/domain-glossary.md)
+- **Technical:** [Architecture](../technical/architecture.md), [Dev setup](../technical/dev-setup.md)

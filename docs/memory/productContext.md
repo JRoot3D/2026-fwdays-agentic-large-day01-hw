@@ -150,5 +150,6 @@
 | App sidebar | `excalidraw-app/components/AppSidebar.tsx` | Library panel |
 
 ## Details
-For detailed architecture → see docs/technical/architecture.md
-For domain glossary → see docs/product/domain-glossary.md
+
+- **Product:** [PRD](../product/PRD.md), [Domain glossary](../product/domain-glossary.md)
+- **Technical:** [Architecture](../technical/architecture.md), [Dev setup](../technical/dev-setup.md)

@@ -136,5 +136,6 @@ yarn fix                # Auto-fix lint + formatting issues
 > Source: root `package.json` `scripts` field
 
 ## Details
-For detailed architecture → see docs/technical/architecture.md
-For domain glossary → see docs/product/domain-glossary.md
+
+- **Product:** [PRD](../product/PRD.md), [Domain glossary](../product/domain-glossary.md)
+- **Technical:** [Architecture](../technical/architecture.md), [Dev setup](../technical/dev-setup.md)

@@ -192,6 +192,85 @@ Lower-level packages must never import from higher-level ones.
 - Root `package.json`: `"react": "19.0.0"`, `"react-dom": "19.0.0"`.
 - `packages/excalidraw/package.json` `peerDependencies`: `"react": "^17 || ^18 || ^19"`.
 
+---
+
+## 13. Undocumented behavior vs project documentation (audit)
+
+The items below were found by scanning `HACK` / `FIXME` / `TODO` / `WORKAROUND`-style comments and tracing **implicit state**, **side effects**, and **initialization order** in source. For each: **what the code actually does**, **what project docs imply or state**, and **the gap**.
+
+### 13.1 Library Jotai state vs multiple embedded instances
+
+**What the code does:** `editor-jotai.ts` uses `createIsolation()` and a dedicated `editorJotaiStore` so editor atoms are scoped per provider instance. On `Library.destroy()` (`packages/excalidraw/data/library.ts`), the code clears `libraryItemSvgsCache` on that store but **leaves commented-out** reset logic for `libraryItemsAtom`, with an explicit `TODO`: *"uncomment after/if we make jotai store scoped to each excal instance"* — implying not all library-related atoms were considered fully isolated when that was written.
+
+**What is documented:** `decisionLog.md` §5 and `systemPatterns.md` describe **isolated Jotai** and `jotai-scope` as preventing leakage between multiple `<Excalidraw>` instances.
+
+**Gap:** Documentation presents a clean isolation story; the in-code TODO records an **unfinished or partial** reset path for library atoms on unmount, so behavior under rapid mount/unmount or multiple instances may diverge from the documented guarantee until that path is resolved.
+
+### 13.2 Export pipeline: “Scene hack,” synthetic frame labels, and stable IDs
+
+**What the code does:** Frame names shown in the DOM while editing are **not** drawn the same way in export. `addFrameLabelsAsTextElements` in `packages/excalidraw/scene/export.ts` injects **temporary text elements** so frames export with visible titles. Separately, export uses a **temp scene** path that can **duplicate elements and regenerate ids** (`tempScene hack` comments in the same file). For PNG embed (`exportEmbedScene`), `packages/utils/src/export.ts` insists on passing **original, uncloned** elements into `serializeAsJSON` *"as long as we're using the Scene hack"* so embedded metadata keeps **stable ids**.
+
+**What is documented:** `decisionLog.md` §7–8 and PRD export sections describe **encryption**, **formats**, and **offline** behavior, not the **two-phase** export model (synthetic elements + id-preserving serialization).
+
+**Gap:** Consumers and maintainers only learn the **ordering and cloning constraints** from inline comments; the public mental model “export = render what you see” is **incomplete** for frames and embedded scenes.
+
+### 13.3 Test harness: global `window.h` and `initialScene` loading gate
+
+**What the code does:** `packages/excalidraw/tests/test-utils.ts` waits until canvases exist **and** `window.h.state.isLoading` is false, with a comment calling this a **"hack-awaiting app.initialScene()"** to fix **race conditions** (prefer a proper event later).
+
+**What is documented:** Test patterns are not described in `docs/memory/` or architecture docs; `architecture.md` lists `isLoading` as an `AppState` field but not **test coupling** to `window.h`.
+
+**Gap:** Tests depend on a **global handle** and **implicit ordering** between render and scene initialization—undocumented contract for anyone writing new integration tests.
+
+### 13.4 Popover viewport fitting vs React StrictMode double effects
+
+**What the code does:** `packages/excalidraw/components/Popover.tsx` uses `lastInitializedPosRef` so a `useLayoutEffect` **skips a second run** when `top`/`left` match, avoiding **double repositioning** under StrictMode (“hack for StrictMode”).
+
+**What is documented:** No mention of StrictMode-specific layout workarounds in project docs.
+
+**Gap:** **Implicit state machine** (first run vs skipped run) exists only in code; changing StrictMode or popover positioning logic can regress layout without guidance.
+
+### 13.5 Public `Excalidraw` wrapper: `UIOptions` merge and memoization
+
+**What the code does:** `packages/excalidraw/index.tsx` merges `UIOptions` with defaults inside the wrapper with a **`FIXME`**: defaults should be normalized in the parent so **memo comparison** sees consistent values.
+
+**What is documented:** `decisionLog.md` §10 describes the **compound component** API; it does not mention **referential or shallow memo pitfalls** on the default-export wrapper’s options merging.
+
+**Gap:** **Non-obvious re-render behavior** when passing partial `UIOptions`—documentation suggests composition, not this internal merge/memo hazard.
+
+### 13.6 `useOutsideClick` and Radix UI portals
+
+**What the code does:** `packages/excalidraw/hooks/useOutsideClick.ts` treats clicks on `[data-radix-portal]` or on `documentElement` when `body` has `pointer-events: none` as **inside** the UI, with a comment that this is a **"terrible hack"** that can mis-classify some radix popups.
+
+**What is documented:** No documentation of **Radix-specific** pointer or portal assumptions.
+
+**Gap:** **Non-local side effect:** outside-click behavior depends on **third-party DOM attributes and global body styles**, not only the passed ref—easy to break when swapping dialog libraries or modal behavior.
+
+### 13.7 Mobile: linear elements and transform handles
+
+**What the code does:** `packages/excalidraw/components/App.tsx` contains a **`HACK`** that **disables transform handles** for **linear elements** on **mobile** (and for 2-point lines) until a better UX exists, while prioritizing point dragging.
+
+**What is documented:** PRD §3.1 lists selection and manipulation broadly; it does **not** state that **resize/transform handles are intentionally suppressed** on touch for line-like elements.
+
+**Gap:** **Platform-dependent editing model** is behavior-by-comment, not user-facing or architectural documentation.
+
+### 13.8 Durable `Store.scheduleCapture` call graph
+
+**What the code does:** `packages/element/src/store.ts` marks `scheduleCapture()` as called from **many places** with a **`TODO`**: *"Suspicious… Seems error-prone."* This coordinates **undo/history** and delta emission—an **implicit contract** across the codebase.
+
+**What is documented:** `systemPatterns` / PRD refer to undo/redo and durable changes at a **product** level, not which code paths must schedule capture.
+
+**Gap:** **Initialization and mutation ordering** for history correctness is **distributed tacit knowledge**; regressions require reading call sites, not a single state diagram in docs.
+
+### 13.9 Known test / utility debt (FYI)
+
+**What the code does:** Examples: `packages/utils/tests/export.test.ts` — **`FIXME`** that `exportToSvg` no longer filters deleted elements; `packages/excalidraw/wysiwyg/textWysiwyg.test.tsx` — flaky test **FIXME**; `packages/utils/tests/withinBounds.test.ts` — **TODO** for more element types.
+
+**What is documented:** Not tracked in memory docs.
+
+**Gap:** Test expectations may **drift from production** behavior until those comments are addressed; useful for maintainers **only if they read source**.
+
 ## Details
-For detailed architecture → see docs/technical/architecture.md
-For domain glossary → see docs/product/domain-glossary.md
+
+- **Product:** [PRD](../product/PRD.md), [Domain glossary](../product/domain-glossary.md)
+- **Technical:** [Architecture](../technical/architecture.md), [Dev setup](../technical/dev-setup.md)
